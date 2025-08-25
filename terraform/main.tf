@@ -18,7 +18,7 @@ provider "azurerm" {
 }
 
 
-# Resource Group
+
 resource "azurerm_resource_group" "rg" {
   name     = "Ybee-rg"
   location = "West Europe"
@@ -29,7 +29,7 @@ resource "azurerm_resource_group" "rg" {
   }
 }
 
-# Virtual Network
+
 resource "azurerm_virtual_network" "vnet" {
   name                = "Ybee-vnet"
   address_space       = ["10.0.0.0/16"]
@@ -37,7 +37,7 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = azurerm_resource_group.rg.name
 }
 
-# Subnet
+
 resource "azurerm_subnet" "subnet" {
   name                 = "Ybee-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
@@ -45,13 +45,13 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-# Network Security Group
+
 resource "azurerm_network_security_group" "nsg" {
   name                = "Ybee-nsg"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
-  # SSH access 
+  
   security_rule {
     name                       = "SSH"
     priority                   = 100
@@ -64,7 +64,7 @@ resource "azurerm_network_security_group" "nsg" {
     destination_address_prefix = "*"
   }
 
-  # HTTP access
+  
   security_rule {
     name                       = "HTTP"
     priority                   = 200
@@ -77,7 +77,7 @@ resource "azurerm_network_security_group" "nsg" {
     destination_address_prefix = "*"
   }
 
-  # Deny all other inbound
+  
   security_rule {
     name                       = "DenyAllInbound"
     priority                   = 400
@@ -91,7 +91,7 @@ resource "azurerm_network_security_group" "nsg" {
   }
 }
 
-# Associate NSG with subnet
+
 resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" {
   subnet_id                 = azurerm_subnet.subnet.id
   network_security_group_id = azurerm_network_security_group.nsg.id
