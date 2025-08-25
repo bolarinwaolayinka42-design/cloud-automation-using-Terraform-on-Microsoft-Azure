@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   terraform:
@@ -22,7 +19,7 @@ jobs:
         with:
           terraform_version: 1.6.0
 
-      #  Azure credentials from GitHub secrets
+      # Azure credentials from GitHub secrets
       - name: Set Azure credentials
         run: |
           echo "ARM_CLIENT_ID=${{ secrets.ARM_CLIENT_ID }}" >> $GITHUB_ENV
