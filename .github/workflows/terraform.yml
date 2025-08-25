@@ -5,35 +5,24 @@ on:
     branches:
       - main
   pull_request:
-
-env:
-  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+    branches:
+      - main
 
 jobs:
   terraform:
-    name: Terraform Plan
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.6.0  
+          terraform_version: 1.7.6
 
       - name: Terraform Init
         run: terraform -chdir=./terraform init
 
       - name: Terraform Plan
-        run: |
-          terraform -chdir=./terraform plan \
-            -var "azure_client_id=$ARM_CLIENT_ID" \
-            -var "azure_client_secret=$ARM_CLIENT_SECRET" \
-            -var "azure_subscription_id=$ARM_SUBSCRIPTION_ID" \
-            -var "azure_tenant_id=$ARM_TENANT_ID" \
-            -out=tfplan
+        run: terraform -chdir=./terraform plan -out=tfplan
