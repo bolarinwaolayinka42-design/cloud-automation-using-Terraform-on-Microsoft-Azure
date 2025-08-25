@@ -7,69 +7,51 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
-  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
-  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+  ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
 
 jobs:
-
-  terraform_validate:
+  terraform:
+    name: Terraform Deploy
     runs-on: ubuntu-latest
-    name: Terraform Validate
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      # 1. Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
+      # 2. Authenticate with Azure
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # 3. Setup Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.0
 
+      # 4. Terraform Init
       - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
+        run: terraform -chdir=./terraform init
 
-      - name: Terraform Validate
-        working-directory: ./terraform
-        run: terraform validate
-
-  terraform_plan:
-    runs-on: ubuntu-latest
-    name: Terraform Plan
-    needs: terraform_validate
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
-
+      # 5. Terraform Plan
       - name: Terraform Plan
-        working-directory: ./terraform
-        run: terraform plan -out=tfplan
+        run: terraform -chdir=./terraform plan -out=tfplan
 
-  terraform_apply:
-    runs-on: ubuntu-latest
-    name: Terraform Apply
-    needs: terraform_plan
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
-
+      # 6. Terraform Apply 
       - name: Terraform Apply
-        working-directory: ./terraform
-        run: terraform apply -auto-approve tfplan
+        if: github.ref == 'refs/heads/main'
+        run: terraform -chdir=./terraform apply -auto-approve tfplan
