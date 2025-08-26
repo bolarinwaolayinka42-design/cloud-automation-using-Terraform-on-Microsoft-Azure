@@ -4,58 +4,43 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout repository
-      - name: Checkout repository
+      - name: Checkout Repo
         uses: actions/checkout@v3
 
-      #  Setup Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.8.5  
+          terraform_version: 1.6.0
 
-      #  Login to Azure securely using JSON secret
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
 
-      # Create SSH key file (if needed for Terraform)
-      - name: Create SSH key file
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PUBLIC_KEY }}" > ~/.ssh/id_rsa.pub
-
-      # Terraform Init
       - name: Terraform Init
-        working-directory: ./terraform
         run: terraform init
 
-      # Terraform Validate
-      - name: Terraform Validate
-        working-directory: ./terraform
-        run: terraform validate
-
-      #  Terraform Plan
       - name: Terraform Plan
-        working-directory: ./terraform
-        run: terraform plan -out=tfplan
+        run: terraform plan \
+          -var "azure_subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+          -var "azure_client_id=${{ secrets.AZURE_CLIENT_ID }}" \
+          -var "azure_client_secret=${{ secrets.AZURE_CLIENT_SECRET }}" \
+          -var "azure_tenant_id=${{ secrets.AZURE_TENANT_ID }}"
 
-      #  Terraform Apply (only on push to main)
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        working-directory: ./terraform
-        run: terraform apply -auto-approve tfplan
-
-      #  debug step to confirm secret is loaded
-      - name: Debug Secret
-        run: echo "Azure credentials loaded successfully"
+        run: terraform apply -auto-approve \
+          -var "azure_subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+          -var "azure_client_id=${{ secrets.AZURE_CLIENT_ID }}" \
+          -var "azure_client_secret=${{ secrets.AZURE_CLIENT_SECRET }}" \
+          -var "azure_tenant_id=${{ secrets.AZURE_TENANT_ID }}"
