@@ -11,15 +11,17 @@ jobs:
     name: Terraform Workflow
     runs-on: ubuntu-latest
 
+    env:
+      AZURE_CREDENTIALS: ${{ secrets.AZURECREDENTIALS }}
+
     steps:
-      
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Azure Login
-        uses: azure/login@v2
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURECREDENTIALS }}
+          creds: ${{ env.AZURE_CREDENTIALS }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -30,23 +32,26 @@ jobs:
         run: terraform fmt -check
         working-directory: ./terraform
 
-    
       - name: Terraform Validate
         run: terraform validate
         working-directory: ./terraform
 
-      
       - name: Terraform Init
         run: terraform init
         working-directory: ./terraform
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan -out=tfplan \
+            -var "azure_subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -var "azure_client_id=${{ secrets.AZURE_CLIENT_ID }}" \
+            -var "azure_client_secret=${{ secrets.AZURE_CLIENT_SECRET }}" \
+            -var "azure_tenant_id=${{ secrets.AZURE_TENANT_ID }}"
         working-directory: ./terraform
 
       - name: Upload Terraform Plan
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  
         with:
           name: tfplan
           path: ./terraform/tfplan
