@@ -5,56 +5,112 @@ on:
     branches:
       - main
   pull_request:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
 
 jobs:
-  terraform:
-    name: Terraform Workflow
+  terraform_validate:
     runs-on: ubuntu-latest
-
-    env:
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-
+    name: Terraform Validate
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          terraform_version: 1.5.0
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+          auth-type: 'IDENTITY'
 
-      - name: Terraform Format Check
-        run: terraform fmt -check
-        working-directory: ./terraform
-
-      - name: Terraform Validate
-        run: terraform validate
-        working-directory: ./terraform
+      - name: Create SSH key file
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PUBLIC_KEY }}" > ~/.ssh/id_rsa.pub
 
       - name: Terraform Init
-        run: terraform init
         working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./terraform
+        run: terraform validate -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+
+  terraform_plan:
+    runs-on: ubuntu-latest
+    name: Terraform Plan
+    needs: terraform_validate
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+          auth-type: 'IDENTITY'
+
+      - name: Create SSH key file
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PUBLIC_KEY }}" > ~/.ssh/id_rsa.pub
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
 
       - name: Terraform Plan
-        run: |
-          terraform plan -out=tfplan \
-            -var "azure_subscription_id=$AZURE_SUBSCRIPTION_ID" \
-            -var "azure_client_id=$AZURE_CLIENT_ID" \
-            -var "azure_client_secret=$AZURE_CLIENT_SECRET" \
-            -var "azure_tenant_id=$AZURE_TENANT_ID"
         working-directory: ./terraform
+        run: terraform plan -out=tfplan -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
 
-      - name: Upload Terraform Plan
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v3
+  terraform_apply:
+    runs-on: ubuntu-latest
+    name: Terraform Apply
+    needs: terraform_plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          name: tfplan
-          path: ./terraform/tfplan
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+          auth-type: 'IDENTITY'
+
+      - name: Create SSH key file
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PUBLIC_KEY }}" > ~/.ssh/id_rsa.pub
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve tfplan
         working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
