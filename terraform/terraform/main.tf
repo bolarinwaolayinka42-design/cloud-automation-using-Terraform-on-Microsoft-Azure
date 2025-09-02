@@ -17,7 +17,6 @@ provider "azurerm" {
   tenant_id       = var.azure_tenant_id
 }
 
-# Resource Group
 resource "azurerm_resource_group" "rg" {
   name     = "Ybee-rg"
   location = "West Europe"
@@ -28,7 +27,6 @@ resource "azurerm_resource_group" "rg" {
   }
 }
 
-# Virtual Network
 resource "azurerm_virtual_network" "vnet" {
   name                = "Ybee-vnet"
   address_space       = ["10.0.0.0/16"]
@@ -36,7 +34,6 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = azurerm_resource_group.rg.name
 }
 
-# Subnet
 resource "azurerm_subnet" "subnet" {
   name                 = "Ybee-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
@@ -44,7 +41,6 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-# Network Security Group
 resource "azurerm_network_security_group" "nsg" {
   name                = "Ybee-nsg"
   location            = azurerm_resource_group.rg.location
@@ -87,13 +83,11 @@ resource "azurerm_network_security_group" "nsg" {
   }
 }
 
-# Associate NSG with Subnet
 resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" {
   subnet_id                 = azurerm_subnet.subnet.id
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
-# Public IP
 resource "azurerm_public_ip" "pip" {
   name                = "Ybee-pip"
   location            = azurerm_resource_group.rg.location
@@ -102,7 +96,6 @@ resource "azurerm_public_ip" "pip" {
   sku                 = "Standard"
 }
 
-# Network Interface
 resource "azurerm_network_interface" "nic" {
   name                = "Ybee-nic"
   location            = azurerm_resource_group.rg.location
@@ -116,7 +109,6 @@ resource "azurerm_network_interface" "nic" {
   }
 }
 
-# Linux Virtual Machine
 resource "azurerm_linux_virtual_machine" "vm" {
   name                  = "Ybee-vm"
   resource_group_name   = azurerm_resource_group.rg.name
@@ -139,7 +131,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   admin_ssh_key {
     username   = "adminuser"
-    public_key = var.ssh_public_key
+    public_key = file("~/.ssh/id_rsa.pub")
   }
 
   tags = {
@@ -148,7 +140,6 @@ resource "azurerm_linux_virtual_machine" "vm" {
   }
 }
 
-# Storage Account
 resource "azurerm_storage_account" "storage" {
   name                     = "ybeestorage"
   resource_group_name      = azurerm_resource_group.rg.name
@@ -162,7 +153,6 @@ resource "azurerm_storage_account" "storage" {
   }
 }
 
-# Outputs
 output "vm_public_ip" {
   description = "Linux VM Public IP"
   value       = azurerm_public_ip.pip.ip_address
@@ -172,4 +162,3 @@ output "storage_account_name" {
   description = "Storage Account Name"
   value       = azurerm_storage_account.storage.name
 }
-

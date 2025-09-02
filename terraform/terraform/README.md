@@ -84,11 +84,7 @@ LICENSE.txt
 
 Purpose
 
-<<<<<<< HEAD
 The main purpose of this project is to showcase cloud automation skills. It demonstrates how Terraform can be used to provision Azure resources automatically, and how to validate the infrastructure by deploying a simple frontend website.
-=======
-The purpose of this project is to serve as a hands-on training and demonstration of cloud automation with Azure. It illustrates how Terraform can be used to provision and manage infrastructure efficiently, while providing a tangible frontend website to validate and showcase the automated environment.
->>>>>>> ac173df9351a93cc4ed4261dfef82dfa63bc6d61
 
 
 

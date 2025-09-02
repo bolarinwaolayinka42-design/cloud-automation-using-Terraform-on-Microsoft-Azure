@@ -18,8 +18,3 @@ variable "azure_tenant_id" {
   type        = string
   description = "Azure Tenant ID"
 }
-
-variable "ssh_public_key" {
-  type        = string
-  description = "SSH public key for VM access"
-}
